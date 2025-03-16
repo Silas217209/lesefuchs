@@ -3,5 +3,4 @@ project(lesefuchs)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(lesefuchs src/main.cpp
-)
+add_executable(lesefuchs src/main.cpp)
