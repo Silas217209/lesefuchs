@@ -5,7 +5,7 @@
 - [ ] Alle vorhandenen Medien digital erfassen
     - [ ] Bücher
     - [ ] Spiele
-    - [ ] DVDs
+    - [ ] DVDs (mit Altersbeschränkung)
     - [ ] CDs
     - [ ] Computerspiele (mit Altersbeschränkung)
     - [ ] Anzahl vorhandener Exemplare je Medientyp

@@ -47,19 +47,19 @@ public:
     const Medium *pMedium() const { return m_medium; }
 
     bool istUeberfaellig() const {
-        time_t jetzt = time(nullptr);
-        double diffsec = difftime(jetzt, m_ausleihDatum);
+        const time_t jetzt = time(nullptr);
+        const double diffsec = difftime(jetzt, m_ausleihDatum);
         return diffsec > m_medium->maxLeihDauer() * 60 * 60 * 24;
     }
 
-    int ueberfaelligTage() {
+    int ueberfaelligTage() const {
         if (!istUeberfaellig()) {
             return 0;
         }
 
-        time_t jetzt = time(nullptr);
-        double diffsec = difftime(jetzt, m_ausleihDatum);
-        int diffDays = static_cast<int>(diffsec / (60 * 60 * 24));
+        const time_t jetzt = time(nullptr);
+        const double diffsec = difftime(jetzt, m_ausleihDatum);
+        const int diffDays = static_cast<int>(diffsec / (60 * 60 * 24));
         return diffDays - m_medium->maxLeihDauer();
     }
 
@@ -75,36 +75,51 @@ public:
 
     void kundeHinzufuegen(Kunde *kunde) { m_kunden.emplace(kunde->id(), kunde); }
 
-    bool ausleihen(Kunde *kunde, Medium *medium) {
+    enum class AusleihFehler {
+        eErfolg,
+        eKundeExistiertNicht,
+        eMediumExistiertNicht,
+        eZuJung,
+        eBereitsAusgeliehen,
+    };
+
+    AusleihFehler ausleihen(Kunde *kunde, Medium *medium) {
         if (m_kunden.find(kunde->id()) == m_kunden.end()) {
-            return false;
+            return AusleihFehler::eKundeExistiertNicht;
         }
 
         if (m_medien.find(medium->id()) == m_medien.end()) {
-            return false;
+            return AusleihFehler::eMediumExistiertNicht;
         }
 
         if (!medium->darfAusleihen(kunde->alter())) {
-            return false;
+            return AusleihFehler::eZuJung;
         }
 
         if (medium->ausgeliehen()) {
-            return false;
+            return AusleihFehler::eBereitsAusgeliehen;
         }
 
         medium->setAusgeliehen(true);
         m_leihvorgaenge.emplace_back(kunde, medium);
 
-        return true;
+        return AusleihFehler::eErfolg;
     }
 
-    bool zurueckgeben(Kunde *kunde, Medium *medium) {
+    enum class RueckgabeFehler {
+        eErfolg,
+        eKundeExistiertNicht,
+        eMediumExistiertNicht,
+        eNichtAusgeliehen,
+    };
+
+    RueckgabeFehler zurueckgeben(Kunde *kunde, Medium *medium) {
         if (m_kunden.find(kunde->id()) == m_kunden.end()) {
-            return false;
+            return RueckgabeFehler::eKundeExistiertNicht;
         }
 
         if (m_medien.find(medium->id()) == m_medien.end()) {
-            return false;
+            return RueckgabeFehler::eMediumExistiertNicht;
         }
 
         for (auto it = m_leihvorgaenge.begin(); it < m_leihvorgaenge.end(); ++it) {
@@ -118,13 +133,12 @@ public:
 
             medium->setAusgeliehen(false);
             m_leihvorgaenge.erase(it);
-            return true;
+            return RueckgabeFehler::eErfolg;
         }
 
-        return false;
+        return RueckgabeFehler::eNichtAusgeliehen;
     }
 
-    // return an array with pointers to Kunde
     std::vector<const Kunde *> sauemigeKunden() {
         std::vector<const Kunde *> sauemigeKunden;
         for (auto l: m_leihvorgaenge) {
