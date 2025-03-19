@@ -23,17 +23,31 @@ private:
     bool m_ausgeliehen = false;
 };
 
+// TODO(Max): abgeleitete Klassen: Bücher, DVD (mit Altersbeschränkung), CD, Computerspiele (mit Altersbeschränkung)
+
 class Kunde {
 public:
-    Kunde(int id, int alter) : m_id(id), m_alter(alter) {}
+    Kunde(int id, int alter, std::string name, std::string vorname, std::string adresse, std::string email,
+          std::string telefon) :
+        m_id(id), m_alter(alter), m_name(name), m_vorname(vorname), m_adresse(adresse), m_email(email),
+        m_telefon(telefon) {}
 
     int id() const { return m_id; }
-
     int alter() const { return m_alter; }
+    std::string name() const { return m_name; }
+    std::string vorname() const { return m_vorname; }
+    std::string adresse() const { return m_adresse; }
+    std::string email() const { return m_email; }
+    std::string telefon() const { return m_telefon; }
 
 private:
     int m_id;
     int m_alter;
+    std::string m_name;
+    std::string m_vorname;
+    std::string m_adresse;
+    std::string m_email;
+    std::string m_telefon;
 };
 
 
@@ -108,6 +122,7 @@ public:
 
     enum class RueckgabeFehler {
         eErfolg,
+        eErfolgUeberzogen, /// Rückgabe erfolgreich, aber Überzogen
         eKundeExistiertNicht,
         eMediumExistiertNicht,
         eNichtAusgeliehen,
@@ -115,10 +130,12 @@ public:
 
     RueckgabeFehler zurueckgeben(Kunde *kunde, Medium *medium) {
         if (m_kunden.find(kunde->id()) == m_kunden.end()) {
+            std::cout << "Kunde existiert nicht\n";
             return RueckgabeFehler::eKundeExistiertNicht;
         }
 
         if (m_medien.find(medium->id()) == m_medien.end()) {
+            std::cout << "Medium existiert nicht\n";
             return RueckgabeFehler::eMediumExistiertNicht;
         }
 
@@ -129,6 +146,11 @@ public:
 
             if (it.base()->pMedium()->id() != medium->id()) {
                 continue;
+            }
+
+            if (it.base()->istUeberfaellig()) {
+                std::cout << "Erfolg, aber übrezogen\n";
+                return RueckgabeFehler::eErfolgUeberzogen;
             }
 
             medium->setAusgeliehen(false);
@@ -143,7 +165,6 @@ public:
         std::vector<const Kunde *> sauemigeKunden;
         for (auto l: m_leihvorgaenge) {
             if (l.istUeberfaellig()) {
-                std::cout << "Kunde " << l.pKunde()->id() << " hat Medium " << l.pMedium()->id() << " überfällig!\n";
                 sauemigeKunden.emplace_back(l.pKunde());
             }
         }
@@ -151,22 +172,25 @@ public:
         return sauemigeKunden;
     }
 
+    // TODO: Löschen
     void zeigeKunden() {
         for (const auto &kunde: m_kunden) {
             std::cout << "Kunde ID: " << kunde.first << "\n";
         }
     }
 
+    // TODO: Löschen
     void zeigeMedien() {
         for (const auto &medium: m_medien) {
             std::cout << "Medium ID: " << medium.first << "\n";
         }
     }
 
+    // TODO: Löschen
     void zeigeVerleihe() {
         std::cout << "Kunde <-> Medium\n";
         for (const auto &l: m_leihvorgaenge) {
-            std::cout << l.pKunde()->id() << " <-> " << l.pMedium()->id() << "\n";
+            std::cout << l.pKunde()->vorname() << " " << l.pKunde()->name() << " <-> " << l.pMedium()->id() << "\n";
         }
     }
 
@@ -180,9 +204,9 @@ private:
 int main() {
     Bibliothek bib;
 
-    auto *k0 = new Kunde(0, 21);
-    auto *k1 = new Kunde(1, 22);
-    auto *k2 = new Kunde(2, 17);
+    auto *k0 = new Kunde(0, 21, "Mueller", "Max", "Hauptstraße 12", "max.m@example.com", "015112345678");
+    auto *k1 = new Kunde(1, 17, "Schneider", "Lena", "Bahnhofstraße 5", "lena.s@example.com", "017312345678");
+    auto *k2 = new Kunde(2, 14, "Weber", "Felix", "Am Park 8", "felix.w@example.com", "016012345678");
 
     auto *m0 = new Medium(0);
     auto *m1 = new Medium(1);
