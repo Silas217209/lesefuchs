@@ -5,7 +5,7 @@
 
 class Medium {
 public:
-    explicit Medium(int id) : m_id(id) {}
+    explicit Medium(int id, std::string titel) : m_id(id), m_titel(titel) {}
     virtual ~Medium() = default;
 
     int id() const { return m_id; }
@@ -18,12 +18,93 @@ public:
 
     void setAusgeliehen(bool ausgeliehen) { m_ausgeliehen = ausgeliehen; };
 
+    enum class MediumTyp {
+        eBuch,
+        eDVD,
+        eCD,
+        eComputerspiel
+    };
+
+    virtual MediumTyp typ() const = 0;
+
+
 private:
     int m_id;
     bool m_ausgeliehen = false;
+    std::string m_titel;
 };
 
-// TODO(Max): abgeleitete Klassen: Bücher, DVD (mit Altersbeschränkung), CD, Computerspiele (mit Altersbeschränkung)
+class Buch : public Medium {
+public:
+    explicit Buch(int id, std::string titel) : Medium(id, titel) {}
+
+    int maxLeihDauer() const override {
+        return 28;
+    }
+
+    bool darfAusleihen(int alter) override {
+        return alter >= 0;
+    }
+
+    MediumTyp typ() const override {
+        return MediumTyp::eBuch;
+    }
+};
+
+class DVD : public Medium {
+public:
+    explicit DVD(int id, std::string titel, int altersBeschraenkung) : Medium(id, titel), m_altersBeschraenkung(altersBeschraenkung) {}
+
+    int maxLeihDauer() const override {
+        return 7;
+    }
+
+    bool darfAusleihen(int alter) override {
+        return alter >= m_altersBeschraenkung;
+    }
+
+
+    MediumTyp typ() const override {
+        return MediumTyp::eDVD;
+    }
+
+private:
+    int m_altersBeschraenkung;
+};
+
+class CD : public Medium {
+public:
+    explicit CD(int id, std::string titel) : Medium(id, titel) {}
+
+    int maxLeihDauer() const override {
+        return 21;
+    }
+
+    MediumTyp typ() const override {
+        return MediumTyp::eCD;
+    }
+};
+
+class Computerspiel : public Medium {
+public:
+    explicit Computerspiel(int id, std::string titel, int altersBeschraenkung) :
+        Medium(id, titel), m_altersBeschraenkung(altersBeschraenkung) {}
+
+    int maxLeihDauer() const override {
+        return 21;
+    }
+
+    bool darfAusleihen(int alter) override {
+        return alter >= m_altersBeschraenkung;
+    }
+
+    MediumTyp typ() const override {
+        return MediumTyp::eComputerspiel;
+    }
+
+private:
+    int m_altersBeschraenkung;
+};
 
 class Kunde {
 public:
@@ -89,6 +170,16 @@ public:
 
     void kundeHinzufuegen(Kunde *kunde) { m_kunden.emplace(kunde->id(), kunde); }
 
+    const std::vector<Leihvorgang> &leihvorgaenge() const { return m_leihvorgaenge; }
+
+    const std::unordered_map<int, Medium *> &medien() const {
+        return m_medien;
+    }
+
+    const std::unordered_map<int, Kunde *> &kunden() const {
+        return m_kunden;
+    }
+
     enum class AusleihFehler {
         eErfolg,
         eKundeExistiertNicht,
@@ -139,17 +230,19 @@ public:
             return RueckgabeFehler::eMediumExistiertNicht;
         }
 
-        for (auto it = m_leihvorgaenge.begin(); it < m_leihvorgaenge.end(); ++it) {
-            if (it.base()->pKunde()->id() != kunde->id()) {
+        for (auto it = m_leihvorgaenge.begin(); it != m_leihvorgaenge.end(); ++it) {
+            if (it->pKunde()->id() != kunde->id()) {
                 continue;
             }
 
-            if (it.base()->pMedium()->id() != medium->id()) {
+            if (it->pMedium()->id() != medium->id()) {
                 continue;
             }
 
-            if (it.base()->istUeberfaellig()) {
+            if (it->istUeberfaellig()) {
                 std::cout << "Erfolg, aber übrezogen\n";
+                medium->setAusgeliehen(false);
+                m_leihvorgaenge.erase(it);
                 return RueckgabeFehler::eErfolgUeberzogen;
             }
 
@@ -204,44 +297,90 @@ private:
 int main() {
     Bibliothek bib;
 
+    // --- KUNDEN ANLEGEN ---
     auto *k0 = new Kunde(0, 21, "Mueller", "Max", "Hauptstraße 12", "max.m@example.com", "015112345678");
     auto *k1 = new Kunde(1, 17, "Schneider", "Lena", "Bahnhofstraße 5", "lena.s@example.com", "017312345678");
     auto *k2 = new Kunde(2, 14, "Weber", "Felix", "Am Park 8", "felix.w@example.com", "016012345678");
+    auto *k3 = new Kunde(3, 35, "Schmidt", "Anna", "Gartenweg 3", "anna.s@example.com", "017612345678");
 
-    auto *m0 = new Medium(0);
-    auto *m1 = new Medium(1);
-    auto *m2 = new Medium(2);
+    // --- MEDIEN ANLEGEN ---
+    auto *buch1 = new Buch(0, "Book 1");                      // Book with generic title
+    auto *dvd1 = new DVD(1, "Film 1", 16);                      // DVD (Film) with generic title and age restriction
+    auto *cd1 = new CD(2, "CD 1");                              // CD with generic title
+    auto *spiel1 = new Computerspiel(3, "Game 1", 12);          // Computerspiel with generic title and age restriction
 
+    // --- KUNDEN UND MEDIEN ZUR BIBLIOTHEK HINZUFÜGEN ---
+    std::cout << "--- Bibliothek wird mit Kunden und Medien gefüllt ---\n";
     bib.kundeHinzufuegen(k0);
     bib.kundeHinzufuegen(k1);
     bib.kundeHinzufuegen(k2);
+    bib.kundeHinzufuegen(k3);
 
-    bib.mediumHinzufuegen(m0);
-    bib.mediumHinzufuegen(m1);
-    bib.mediumHinzufuegen(m2);
+    bib.mediumHinzufuegen(buch1);
+    bib.mediumHinzufuegen(dvd1);
+    bib.mediumHinzufuegen(cd1);
+    bib.mediumHinzufuegen(spiel1);
 
-    bib.ausleihen(k0, m0);
-    bib.ausleihen(k0, m1);
-    bib.ausleihen(k0, m2);
+    // --- AUSLEIHEN VON MEDIEN ---
+    std::cout << "\n--- Ausleihen von Medien ---\n";
 
+    std::cout << "Max (21) leiht 'Book 1' aus:\n";
+    auto result1 = bib.ausleihen(k0, buch1);
+    std::cout << "Ergebnis: " << (result1 == Bibliothek::AusleihFehler::eErfolg ? "Erfolg" : "Fehler") << "\n";
+
+    std::cout << "Felix (14) versucht 'Film 1' auszuleihen:\n";
+    auto result2 = bib.ausleihen(k2, dvd1);
+    std::cout << "Ergebnis: " << (result2 == Bibliothek::AusleihFehler::eZuJung ? "Zu jung" : "Anderer Fehler") << "\n";
+
+    std::cout << "Lena (17) leiht 'CD 1' aus:\n";
+    auto result3 = bib.ausleihen(k1, cd1);
+    std::cout << "Ergebnis: " << (result3 == Bibliothek::AusleihFehler::eErfolg ? "Erfolg" : "Fehler") << "\n";
+
+    std::cout << "Anna versucht bereits ausgeliehene 'CD 1' auszuleihen:\n";
+    auto result4 = bib.ausleihen(k3, cd1);
+    std::cout << "Ergebnis: " << (result4 == Bibliothek::AusleihFehler::eBereitsAusgeliehen ? "Bereits ausgeliehen" : "Anderer Fehler") << "\n";
+
+    std::cout << "Felix (14) leiht 'Game 1' aus:\n";
+    auto result5 = bib.ausleihen(k2, spiel1);
+    std::cout << "Ergebnis: " << (result5 == Bibliothek::AusleihFehler::eErfolg ? "Erfolg" : "Fehler") << "\n";
+
+    // --- AKTUELLEN STATUS ANZEIGEN ---
+    std::cout << "\n--- Aktueller Status der Bibliothek ---\n";
+    std::cout << "Registrierte Kunden:\n";
     bib.zeigeKunden();
-    std::cout << "\n";
+
+    std::cout << "\nVerfügbare Medien:\n";
     bib.zeigeMedien();
-    std::cout << "\n";
+
+    std::cout << "\nAktuelle Leihvorgänge:\n";
     bib.zeigeVerleihe();
 
-    bib.zurueckgeben(k0, m1);
-    std::cout << "\n";
-    bib.zeigeVerleihe();
-    bib.sauemigeKunden();
+    // --- RÜCKGABE VON MEDIEN ---
+    std::cout << "\n--- Rückgabe von Medien ---\n";
+    std::cout << "Max gibt 'Book 1' zurück:\n";
+    auto rueckgabe1 = bib.zurueckgeben(k0, buch1);
+    std::cout << "Ergebnis: " << (rueckgabe1 == Bibliothek::RueckgabeFehler::eErfolg ? "Erfolg" : "Fehler") << "\n";
 
+    std::cout << "Max versucht 'Film 1' zurückzugeben (nicht ausgeliehen):\n";
+    auto rueckgabe2 = bib.zurueckgeben(k0, dvd1);
+    std::cout << "Ergebnis: " << (rueckgabe2 == Bibliothek::RueckgabeFehler::eNichtAusgeliehen ? "Nicht ausgeliehen" : "Anderer Fehler") << "\n";
+
+    std::cout << "\n--- Säumige Kunden überprüfen ---\n";
+    auto saeumige = bib.sauemigeKunden();
+    std::cout << "Anzahl säumiger Kunden: " << saeumige.size() << "\n";
+
+    std::cout << "\n--- Aktualisierter Status nach Rückgaben ---\n";
+    bib.zeigeVerleihe();
+
+    // --- AUFRÄUMEN ---
     delete k0;
     delete k1;
     delete k2;
-
-    delete m0;
-    delete m1;
-    delete m2;
+    delete k3;
+    delete buch1;
+    delete dvd1;
+    delete cd1;
+    delete spiel1;
 
     return 0;
 }
