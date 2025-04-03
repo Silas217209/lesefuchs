@@ -1,0 +1,102 @@
+@startuml
+    class Medium {
+        -int m_id
+        -bool m_ausgeliehen
+        -string m_titel
+        +Medium(int id, string titel)
+        +~Medium()
+        +int id() const
+        +string titel()
+        +bool darfAusleihen(int alter)
+        +int maxLeihDauer() const
+        +bool ausgeliehen() const
+        +void setAusgeliehen(bool ausgeliehen)
+        +MediumTyp typ() const*
+    }
+
+    class Buch {
+        +Buch(int id, string titel)
+        +int maxLeihDauer() const
+        +bool darfAusleihen(int alter)
+        +MediumTyp typ() const
+    }
+
+    class DVD {
+        -int m_altersBeschraenkung
+        +DVD(int id, string titel, int altersBeschraenkung)
+        +int maxLeihDauer() const
+        +bool darfAusleihen(int alter)
+        +MediumTyp typ() const
+    }
+
+    class CD {
+        +CD(int id, string titel)
+        +int maxLeihDauer() const
+        +MediumTyp typ() const
+    }
+
+    class Computerspiel {
+        -int m_altersBeschraenkung
+        +Computerspiel(int id, string titel, int altersBeschraenkung)
+        +int maxLeihDauer() const
+        +bool darfAusleihen(int alter)
+        +MediumTyp typ() const
+    }
+
+    class Kunde {
+        -int m_id
+        -int m_alter
+        -string m_name
+        -string m_vorname
+        -string m_adresse
+        -string m_email
+        -string m_telefon
+        +Kunde(int id, int alter, string name, string vorname, string adresse, string email, string telefon)
+        +int id() const
+        +int alter() const
+        +string name() const
+        +string vorname() const
+        +string adresse() const
+        +string email() const
+        +string telefon() const
+    }
+
+    class Leihvorgang {
+        -const Kunde* m_kunden
+        -const Medium* m_medium
+        -time_t m_ausleihDatum
+        +Leihvorgang(const Kunde* kundenId, const Medium* mediumId)
+        +const Kunde* pKunde() const
+        +const Medium* pMedium() const
+        +bool istUeberfaellig() const
+        +int ueberfaelligTage() const
+    }
+
+    class Bibliothek {
+        -unordered_map<int, Medium*> m_medien
+        -unordered_map<int, Kunde*> m_kunden
+        -vector<Leihvorgang> m_leihvorgaenge
+        +void mediumHinzufuegen(Medium* medium)
+        +void kundeHinzufuegen(Kunde* kunde)
+        +const vector<Leihvorgang>& leihvorgaenge() const
+        +const unordered_map<int, Medium*>& medien() const
+        +const unordered_map<int, Kunde*>& kunden() const
+        +AusleihFehler ausleihen(Kunde* kunde, Medium* medium)
+        +RueckgabeFehler zurueckgeben(Kunde* kunde, Medium* medium)
+        +vector<const Kunde*> sauemigeKunden()
+        +void entfKunde(int ID)
+        +void entfMedien(int ID)
+    }
+
+    Medium <|-- Buch
+    Medium <|-- DVD
+    Medium <|-- CD
+    Medium <|-- Computerspiel
+
+    Bibliothek --* Medium
+    Bibliothek --* Kunde
+    Bibliothek --* Leihvorgang
+    Leihvorgang --* Kunde
+    Leihvorgang --* Medium
+
+    @enduml
